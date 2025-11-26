@@ -1,8 +1,17 @@
 import type { MyContext, MyConversation } from "../index";
-import { findOrCreateUser } from "../../services/user.service";
-import { createExpense, sumByPeriod } from "../../services/expense.service";
-import { DEFAULT_EXPENSE_LIMIT, PERIODS } from "../../utils/constants";
-import { formatLimitWarning } from "../../utils/format";
+import { findOrCreateUser, getUserLanguage } from "../../services/user.service";
+import { createExpense } from "../../services/expense.service";
+import {
+  t,
+  getCategoryKeyboard,
+  getMainKeyboard,
+  getCategoryKey,
+} from "../../utils/language";
+import { ADMIN_IDS } from "../../admin/types";
+
+function formatNumber(num: number): string {
+  return num.toLocaleString("uz-UZ");
+}
 
 export async function addExpenseConversation(
   conversation: MyConversation,
@@ -10,33 +19,42 @@ export async function addExpenseConversation(
 ) {
   const telegramId = ctx.from?.id;
   if (!telegramId) {
-    await ctx.reply("❌ Foydalanuvchi aniqlanmadi.");
+    await ctx.reply("❌ Error");
     return;
   }
 
-  // Xarajat nomi
-  await ctx.reply("📝 Xarajat nomini kiriting:");
-  const titleCtx = await conversation.wait();
-  const title = titleCtx.message?.text?.trim();
+  const lang = (await getUserLanguage(telegramId)) || "uz";
+  const isAdmin = ADMIN_IDS.includes(telegramId);
 
-  if (!title) {
-    await ctx.reply(
-      "❌ Xarajat nomi bo'sh bo'lmasligi kerak. Qaytadan /add_expense buyrug'ini yuboring."
-    );
-    return;
-  }
+  // Summa so'rash
+  await ctx.reply(t(lang, "expense_enter_amount"), {
+    parse_mode: "Markdown",
+    reply_markup: getCategoryKeyboard(lang),
+  });
 
-  // Summa
-  await ctx.reply("💵 Summani kiriting (faqat raqam):");
   let amount: number = 0;
 
   while (true) {
     const amountCtx = await conversation.wait();
     const amountText = amountCtx.message?.text?.trim();
+
+    // Bekor qilish
+    if (
+      amountText === t(lang, "btn_cancel") ||
+      amountText === t("uz", "btn_cancel") ||
+      amountText === t("ru", "btn_cancel") ||
+      amountText === t("en", "btn_cancel")
+    ) {
+      await ctx.reply(t(lang, "cancelled"), {
+        reply_markup: getMainKeyboard(lang, isAdmin),
+      });
+      return;
+    }
+
     const parsed = parseFloat(amountText || "");
 
     if (isNaN(parsed) || parsed <= 0) {
-      await ctx.reply("❌ Noto'g'ri summa. Iltimos, musbat raqam kiriting:");
+      await ctx.reply(t(lang, "expense_invalid_amount"));
       continue;
     }
 
@@ -44,38 +62,53 @@ export async function addExpenseConversation(
     break;
   }
 
-  // Kategoriya
-  await ctx.reply(
-    "📂 Kategoriyani kiriting (masalan: oziq-ovqat, transport, ko'ngilochar, boshqa):"
-  );
-  const categoryCtx = await conversation.wait();
-  const category = categoryCtx.message?.text?.trim();
+  // Kategoriya so'rash
+  await ctx.reply(t(lang, "expense_enter_category"), {
+    parse_mode: "Markdown",
+    reply_markup: getCategoryKeyboard(lang),
+  });
 
-  if (!category) {
-    await ctx.reply(
-      "❌ Kategoriya bo'sh bo'lmasligi kerak. Qaytadan /add_expense buyrug'ini yuboring."
-    );
+  const categoryCtx = await conversation.wait();
+  const categoryText = categoryCtx.message?.text?.trim();
+
+  // Bekor qilish
+  if (
+    categoryText === t(lang, "btn_cancel") ||
+    categoryText === t("uz", "btn_cancel") ||
+    categoryText === t("ru", "btn_cancel") ||
+    categoryText === t("en", "btn_cancel")
+  ) {
+    await ctx.reply(t(lang, "cancelled"), {
+      reply_markup: getMainKeyboard(lang, isAdmin),
+    });
     return;
   }
 
+  const category = categoryText || t(lang, "category_other");
+
+  // Izoh so'rash
+  await ctx.reply(t(lang, "expense_enter_description"), {
+    parse_mode: "Markdown",
+  });
+
+  const descCtx = await conversation.wait();
+  const descText = descCtx.message?.text?.trim();
+  const description =
+    descText === "/skip" ? t(lang, "skip") : descText || t(lang, "skip");
+
   // Saqlash
   const user = await findOrCreateUser(telegramId);
-  await createExpense(user.id, title, amount, category);
+  await createExpense(user.id, description, amount, category);
 
   await ctx.reply(
-    `✅ Xarajat saqlandi!\n\n📝 Nomi: ${title}\n💵 Summa: ${amount.toLocaleString(
-      "uz-UZ"
-    )} so'm\n📂 Kategoriya: ${category}`
+    t(lang, "expense_success", {
+      amount: formatNumber(amount),
+      category,
+      description,
+    }),
+    {
+      parse_mode: "Markdown",
+      reply_markup: getMainKeyboard(lang, isAdmin),
+    }
   );
-
-  // Limit tekshirish
-  const currentMonthExpense = await sumByPeriod(user.id, PERIODS.MONTHLY);
-  if (currentMonthExpense > DEFAULT_EXPENSE_LIMIT) {
-    await ctx.reply(
-      formatLimitWarning(currentMonthExpense, DEFAULT_EXPENSE_LIMIT),
-      {
-        parse_mode: "Markdown",
-      }
-    );
-  }
 }

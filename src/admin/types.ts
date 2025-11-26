@@ -27,4 +27,15 @@ export enum AdminState {
   ADDING_CHANNEL = "adding_channel",
   BROADCASTING = "broadcasting",
   WAITING_BROADCAST_CONFIRM = "waiting_broadcast_confirm",
+  WAITING_CHANNEL_ID = "waiting_channel_id",
+  WAITING_CHANNEL_TITLE = "waiting_channel_title",
+  WAITING_CHANNEL_URL = "waiting_channel_url",
+  WAITING_BROADCAST_MESSAGE = "waiting_broadcast_message",
+  CONFIRMING_BROADCAST = "confirming_broadcast",
+}
+
+// Kanal turi
+export enum ChannelType {
+  CHANNEL = "channel",
+  GROUP = "group",
 }

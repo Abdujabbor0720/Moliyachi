@@ -1,47 +1,69 @@
 import type { MyContext } from "../index";
-import { findOrCreateUser } from "../../services/user.service";
+import { findOrCreateUser, getUserLanguage } from "../../services/user.service";
 import { weeklyReport, monthlyReport } from "../../services/report.service";
-import { formatReport } from "../../utils/format";
-import { InlineKeyboard } from "grammy";
+import { t, getReportKeyboard } from "../../utils/language";
+
+function formatNumber(num: number): string {
+  return num.toLocaleString("uz-UZ");
+}
 
 export async function reportCommand(ctx: MyContext) {
-  const keyboard = new InlineKeyboard()
-    .text("📅 Haftalik", "report_weekly")
-    .text("📆 Oylik", "report_monthly");
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
 
-  await ctx.reply("📊 Qaysi davr uchun hisobot olmoqchisiz?", {
-    reply_markup: keyboard,
+  const lang = (await getUserLanguage(telegramId)) || "uz";
+
+  await ctx.reply(t(lang, "report_select_period"), {
+    parse_mode: "Markdown",
+    reply_markup: getReportKeyboard(lang),
   });
 }
 
 export async function handleReportCallback(ctx: MyContext) {
   const telegramId = ctx.from?.id;
   if (!telegramId) {
-    await ctx.answerCallbackQuery("❌ Foydalanuvchi aniqlanmadi.");
+    await ctx.answerCallbackQuery("❌ Error");
     return;
   }
 
+  const lang = (await getUserLanguage(telegramId)) || "uz";
   const callbackData = ctx.callbackQuery?.data;
   const user = await findOrCreateUser(telegramId);
 
   let report;
+  let periodKey: string;
+
   if (callbackData === "report_weekly") {
     report = await weeklyReport(user.id);
+    periodKey = "report_period_weekly";
   } else if (callbackData === "report_monthly") {
     report = await monthlyReport(user.id);
+    periodKey = "report_period_monthly";
   } else {
-    await ctx.answerCallbackQuery("❌ Noma'lum tanlov.");
+    await ctx.answerCallbackQuery("❌ Error");
     return;
   }
 
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText(
-    formatReport(
-      report.periodName,
-      report.categoryExpenses,
-      report.totalIncome,
-      report.totalExpense
-    ),
-    { parse_mode: "Markdown" }
-  );
+
+  if (report.totalIncome === 0 && report.totalExpense === 0) {
+    await ctx.editMessageText(t(lang, "report_no_data"), {
+      parse_mode: "Markdown",
+    });
+    return;
+  }
+
+  const balance = report.totalIncome - report.totalExpense;
+  const periodName = t(lang, periodKey);
+
+  let message = t(lang, "report_title", { period: periodName });
+  message += `${t(lang, "report_income", {
+    amount: formatNumber(report.totalIncome),
+  })}\n`;
+  message += `${t(lang, "report_expense", {
+    amount: formatNumber(report.totalExpense),
+  })}\n\n`;
+  message += t(lang, "report_balance", { amount: formatNumber(balance) });
+
+  await ctx.editMessageText(message, { parse_mode: "Markdown" });
 }

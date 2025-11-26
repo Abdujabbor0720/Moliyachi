@@ -1,6 +1,12 @@
 import type { MyContext, MyConversation } from "../index";
-import { findOrCreateUser } from "../../services/user.service";
+import { findOrCreateUser, getUserLanguage } from "../../services/user.service";
 import { createIncome } from "../../services/income.service";
+import { t, getSourceKeyboard, getMainKeyboard } from "../../utils/language";
+import { ADMIN_IDS } from "../../admin/types";
+
+function formatNumber(num: number): string {
+  return num.toLocaleString("uz-UZ");
+}
 
 export async function addIncomeConversation(
   conversation: MyConversation,
@@ -8,35 +14,42 @@ export async function addIncomeConversation(
 ) {
   const telegramId = ctx.from?.id;
   if (!telegramId) {
-    await ctx.reply("❌ Foydalanuvchi aniqlanmadi.");
+    await ctx.reply("❌ Error");
     return;
   }
 
-  // Manba
-  await ctx.reply(
-    "📋 Daromad manbasini kiriting (masalan: ish haqi, qo'shimcha ish, sovg'a):"
-  );
-  const sourceCtx = await conversation.wait();
-  const source = sourceCtx.message?.text?.trim();
+  const lang = (await getUserLanguage(telegramId)) || "uz";
+  const isAdmin = ADMIN_IDS.includes(telegramId);
 
-  if (!source) {
-    await ctx.reply(
-      "❌ Manba bo'sh bo'lmasligi kerak. Qaytadan /add_income buyrug'ini yuboring."
-    );
-    return;
-  }
+  // Summa so'rash
+  await ctx.reply(t(lang, "income_enter_amount"), {
+    parse_mode: "Markdown",
+    reply_markup: getSourceKeyboard(lang),
+  });
 
-  // Summa
-  await ctx.reply("💵 Summani kiriting (faqat raqam):");
   let amount: number = 0;
 
   while (true) {
     const amountCtx = await conversation.wait();
     const amountText = amountCtx.message?.text?.trim();
+
+    // Bekor qilish
+    if (
+      amountText === t(lang, "btn_cancel") ||
+      amountText === t("uz", "btn_cancel") ||
+      amountText === t("ru", "btn_cancel") ||
+      amountText === t("en", "btn_cancel")
+    ) {
+      await ctx.reply(t(lang, "cancelled"), {
+        reply_markup: getMainKeyboard(lang, isAdmin),
+      });
+      return;
+    }
+
     const parsed = parseFloat(amountText || "");
 
     if (isNaN(parsed) || parsed <= 0) {
-      await ctx.reply("❌ Noto'g'ri summa. Iltimos, musbat raqam kiriting:");
+      await ctx.reply(t(lang, "income_invalid_amount"));
       continue;
     }
 
@@ -44,13 +57,53 @@ export async function addIncomeConversation(
     break;
   }
 
+  // Manba so'rash
+  await ctx.reply(t(lang, "income_enter_source"), {
+    parse_mode: "Markdown",
+    reply_markup: getSourceKeyboard(lang),
+  });
+
+  const sourceCtx = await conversation.wait();
+  const sourceText = sourceCtx.message?.text?.trim();
+
+  // Bekor qilish
+  if (
+    sourceText === t(lang, "btn_cancel") ||
+    sourceText === t("uz", "btn_cancel") ||
+    sourceText === t("ru", "btn_cancel") ||
+    sourceText === t("en", "btn_cancel")
+  ) {
+    await ctx.reply(t(lang, "cancelled"), {
+      reply_markup: getMainKeyboard(lang, isAdmin),
+    });
+    return;
+  }
+
+  const source = sourceText || t(lang, "source_other");
+
+  // Izoh so'rash
+  await ctx.reply(t(lang, "income_enter_description"), {
+    parse_mode: "Markdown",
+  });
+
+  const descCtx = await conversation.wait();
+  const descText = descCtx.message?.text?.trim();
+  const description =
+    descText === "/skip" ? t(lang, "skip") : descText || t(lang, "skip");
+
   // Saqlash
   const user = await findOrCreateUser(telegramId);
   await createIncome(user.id, source, amount);
 
   await ctx.reply(
-    `✅ Daromad saqlandi!\n\n📋 Manba: ${source}\n💵 Summa: ${amount.toLocaleString(
-      "uz-UZ"
-    )} so'm`
+    t(lang, "income_success", {
+      amount: formatNumber(amount),
+      source,
+      description,
+    }),
+    {
+      parse_mode: "Markdown",
+      reply_markup: getMainKeyboard(lang, isAdmin),
+    }
   );
 }

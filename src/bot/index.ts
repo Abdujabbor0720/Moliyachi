@@ -7,7 +7,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 export interface SessionData {
-  // Session data uchun
+  __language_code?: string;
 }
 
 type BaseContext = Context & SessionFlavor<SessionData>;
@@ -25,7 +25,9 @@ export const bot = new Bot<MyContext>(token);
 // Session middleware
 bot.use(
   session({
-    initial: (): SessionData => ({}),
+    initial: (): SessionData => ({
+      __language_code: "uz",
+    }),
   })
 );
 

@@ -22,6 +22,9 @@ export class User {
   @Column({ nullable: true })
   firstName: string;
 
+  @Column({ default: "uz" })
+  language: string;
+
   @Column({ default: false })
   isBlocked: boolean;
 

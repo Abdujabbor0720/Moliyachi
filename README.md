@@ -126,13 +126,13 @@ Agar oylik xarajatlaringiz bu limitdan oshsa, bot avtomatik ravishda ogohlantiri
 
 Bot pastki tugmalar orqali ham boshqariladi:
 
-| Tugma | Vazifasi |
-|-------|----------|
-| ➕ Xarajat qo'shish | Yangi xarajat kiritish |
-| 💵 Daromad qo'shish | Yangi daromad kiritish |
-| 💰 Balans | Umumiy balansni ko'rish |
-| 📊 Hisobot | Haftalik/oylik hisobot |
-| 🏠 Bosh menyu | Bosh menyuga qaytish |
+| Tugma               | Vazifasi                |
+| ------------------- | ----------------------- |
+| ➕ Xarajat qo'shish | Yangi xarajat kiritish  |
+| 💵 Daromad qo'shish | Yangi daromad kiritish  |
+| 💰 Balans           | Umumiy balansni ko'rish |
+| 📊 Hisobot          | Haftalik/oylik hisobot  |
+| 🏠 Bosh menyu       | Bosh menyuga qaytish    |
 
 ## Skrinshot
 

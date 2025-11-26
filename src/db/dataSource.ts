@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import { User } from "./entities/User";
 import { Expense } from "./entities/Expense";
 import { Income } from "./entities/Income";
+import { RequiredChannel } from "./entities/RequiredChannel";
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -16,5 +17,5 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || "kirim_chiqim",
   synchronize: true,
   logging: false,
-  entities: [User, Expense, Income],
+  entities: [User, Expense, Income, RequiredChannel],
 });

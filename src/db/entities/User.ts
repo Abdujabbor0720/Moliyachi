@@ -16,6 +16,15 @@ export class User {
   @Column({ type: "bigint", unique: true })
   telegramId: number;
 
+  @Column({ nullable: true })
+  username: string;
+
+  @Column({ nullable: true })
+  firstName: string;
+
+  @Column({ default: false })
+  isBlocked: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
